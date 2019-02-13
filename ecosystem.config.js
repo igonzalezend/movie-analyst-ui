@@ -1,7 +1,7 @@
 module.exports = {
     apps : [{
-      name: "app",
-      script: "./app.js",
+      name: "Movies_UI",
+      script: "./server.js",
       env: {
         BACKEND_URL: "10.0.6.189:3000",
         PORT: "3030", 
