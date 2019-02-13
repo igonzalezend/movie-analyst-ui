@@ -3,6 +3,7 @@ module.exports = {
       name: "Movies_UI",
       script: "./server.js",
       env: {
+        NODE_ENV: "development",
         BACKEND_URL: "10.0.6.189:3000",
         PORT: "3030", 
       },
