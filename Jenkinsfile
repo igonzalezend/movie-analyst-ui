@@ -15,16 +15,6 @@ pipeline {
 					dockerImage = docker.build imageTag
 				}             
 			}                 
-		}/**              
-		stage('Test') {                         
-			steps {                                 
-				echo 'Testing...'
-				script{
-					dockerImage.inside {
-						sh 'npm test'
-					}
-				}
-			}                 
 		}
 		stage('push') {
 			steps {
@@ -36,7 +26,7 @@ pipeline {
 				}
 				sh 'docker rmi --force $imageTag'
 			}
-		}                 
+		}/**                 
 		stage('Deploy') {                         
 			steps {                                 
 				echo 'Deploying....'
