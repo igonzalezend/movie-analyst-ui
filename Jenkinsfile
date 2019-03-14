@@ -1,44 +1,62 @@
-pipeline{
-    agent any
+pipeline {
 
-    stages
-    {
-        stage("Build"){
-            steps{
-                sh '''
-                    npm install
-                    cd ..
-                    tar -czf movie-analyst-ui.tar.gz RampUp_movie-analyst-ui
-                '''
-            }
-        }
+	environment{
+		imageTag = 'igonzalezend/movie-analyst-ui' + ":$BUILD_NUMBER"
+		credentials = 'dockerhub'
+	}
 
-        stage("Deploy"){
-            parallel {
-                stage('Deploy in front 1c'){
-                    steps{
-                        dir('/var/lib/jenkins/workspace') {
-                            sshPublisher(publishers: [sshPublisherDesc(configName: 'FrontEnd_1C', transfers: [sshTransfer(cleanRemote: false, excludes: '', execCommand: '', execTimeout: 120000, flatten: false, makeEmptyDirs: false, noDefaultExcludes: false, patternSeparator: '[, ]+', remoteDirectory: '', remoteDirectorySDF: false, removePrefix: '', sourceFiles: 'movie-analyst-ui.tar.gz')], usePromotionTimestamp: false, useWorkspaceInPromotion: false, verbose: false)])
-                            sh '''
-                                ssh ubuntu@10.0.4.175 "tar -xzf movie-analyst-ui.tar.gz"
-                                ssh ubuntu@10.0.4.175 "sudo chown ubuntu:ubuntu /home/ubuntu/.pm2/rpc.sock /home/ubuntu/.pm2/pub.sock ; pm2 stop all ; pm2 start /home/ubuntu/RampUp_movie-analyst-ui/ecosystem.config.js"
-                            '''
-                        }                
-                    }
-                }
-            
-                stage('Deploy in front 1d'){
-                    steps{
-                        dir('/var/lib/jenkins/workspace') {
-                            sshPublisher(publishers: [sshPublisherDesc(configName: 'FrontEnd_1D', transfers: [sshTransfer(cleanRemote: false, excludes: '', execCommand: '', execTimeout: 120000, flatten: false, makeEmptyDirs: false, noDefaultExcludes: false, patternSeparator: '[, ]+', remoteDirectory: '', remoteDirectorySDF: false, removePrefix: '', sourceFiles: 'movie-analyst-ui.tar.gz')], usePromotionTimestamp: false, useWorkspaceInPromotion: false, verbose: false)])
-                            sh '''
-                                ssh ubuntu@10.0.5.243 "tar -xzf movie-analyst-ui.tar.gz"
-                                ssh ubuntu@10.0.5.243 "sudo chown ubuntu:ubuntu /home/ubuntu/.pm2/rpc.sock /home/ubuntu/.pm2/pub.sock ; pm2 stop all ; pm2 start /home/ubuntu/RampUp_movie-analyst-ui/ecosystem.config.js"
-                            '''
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
+	agent any    
+
+	stages {                 
+		stage('Prepare') {                         
+			steps {                                 
+				echo 'Preparing..'
+				sh  'npm install'
+			}                 
+		}                 
+		/**stage('Build') {                         
+			steps {                                 
+				echo 'Building..'
+
+				script {
+					dockerImage = docker.build imageTag
+				}             
+			}                 
+		}                 
+		stage('Test') {                         
+			steps {                                 
+				echo 'Testing...'
+				script{
+					dockerImage.inside {
+						sh 'npm test'
+					}
+				}
+			}                 
+		}
+		stage('push') {
+			steps {
+				echo 'pushing'
+				script {
+					docker.withRegistry('', credentials){
+						dockerImage.push()
+					}
+				}
+				sh 'docker rmi --force $imageTag'
+			}
+		}                 
+		stage('Deploy') {                         
+			steps {                                 
+				echo 'Deploying....'
+				input("Deploy the image?")
+				script {
+					docker.withRegistry('', credentials){
+						sh 'docker pull $imageTag'
+					}
+				}
+				sh 'docker rm -f $(docker ps -a -q)'
+				sh 'docker run -d -p 8000:8000 $imageTag'
+				sh 'docker image prune -f -a'                                    					
+			}                 
+		}**/         
+	} 
+} 
